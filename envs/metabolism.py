@@ -145,9 +145,10 @@ class Metabolism:
         return float(np.clip(self.energy / self.config.max_energy, 0.0, 1.0))
 
     @property
-    def has_room(self) -> bool:
-        """Whether a whole pellet fits under ``max_energy``."""
-        return self.energy + self.config.food_value <= self.config.max_energy
+    def room(self) -> int:
+        """How many whole pellets fit under ``max_energy``."""
+        spare = self.config.max_energy - self.energy
+        return max(int(spare // self.config.food_value), 0)
 
     @property
     def is_dead(self) -> bool:

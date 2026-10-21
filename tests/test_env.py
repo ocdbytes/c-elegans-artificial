@@ -424,6 +424,21 @@ def test_satiety_leaves_a_pellet_that_would_overfill():
     assert info["food_eaten"] == 1
 
 
+def test_satiety_eats_only_the_nearest_pellets_that_fit():
+    """A clump in reach must not be eaten whole when only one pellet fits."""
+    env = _fixed_env(count=3, min_spawn_distance=0.0, respawn_on_eat=False, eating="satiety")
+    env.reset(seed=0)
+    env.worm.position = np.array([10.0, 10.0])
+    env.food.positions[:] = np.array([[10.3, 10.0], [10.1, 10.0], [10.2, 10.0]])
+    metabolism = env.config.metabolism
+    env.metabolism.energy = metabolism.max_energy - metabolism.food_value
+
+    _, _, _, _, info = env.step(np.zeros(2, dtype=np.float32))
+
+    assert info["food_eaten"] == 1
+    assert sorted(env.food.positions[:, 0]) == pytest.approx([10.2, 10.3])
+
+
 def test_eat_command_decides_and_costs_nothing():
     env = _single_pellet_env(min_spawn_distance=0.0, eating="action")
     assert env.action_space.shape == (3,)

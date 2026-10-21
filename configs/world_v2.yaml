@@ -34,8 +34,8 @@ food:
   # lawns; a fully eaten patch reappears whole somewhere else.
   patches: 3
   patch_spread: 1.0       # std dev of a pellet's offset from its patch centre
-  # auto: always eat a touched pellet. satiety: skip it while a whole pellet
-  # would overfill the worm. action: a third action entry decides.
+  # auto: always eat a touched pellet. satiety: eat only the touched pellets
+  # that fit whole under max_energy. action: a third action entry decides.
   eating: satiety
 
 toxin:
