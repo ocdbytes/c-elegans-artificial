@@ -157,10 +157,8 @@ class WormWorldEnv(gym.Env):
         # has enough left to complete it.
         self.metabolism.spend(locomotion)
         move = self.worm.step(locomotion, speed_factor=self.metabolism.speed_factor)
-        eaten = (
-            self.food.consume(self.worm.position, self.np_random)
-            if self._wants_to_eat(action)
-            else 0
+        eaten = self.food.consume(
+            self.worm.position, self.np_random, limit=self._appetite(action)
         )
         self.metabolism.eat(eaten)
         # Dosed after moving, so the cost reflects where the action landed the
@@ -219,22 +217,22 @@ class WormWorldEnv(gym.Env):
             self._renderer.close()
             self._renderer = None
 
-    def _wants_to_eat(self, action: np.ndarray) -> bool:
-        """Decides whether a touched pellet is eaten this step.
+    def _appetite(self, action: np.ndarray) -> int | None:
+        """Decides how many touched pellets may be eaten this step.
 
         Args:
             action: The clipped action. Its third entry is the eat command
                 under ``food.eating: action``.
 
         Returns:
-            True when ``food.eating`` allows eating now.
+            The most pellets ``food.eating`` allows now, or None for no limit.
         """
         eating = self.config.food.eating
         if eating == "satiety":
-            return self.metabolism.has_room
-        if eating == "action":
-            return bool(action[2] > 0.0)
-        return True
+            return self.metabolism.room
+        if eating == "action" and action[2] <= 0.0:
+            return 0
+        return None
 
     def _observe(self) -> np.ndarray:
         """Reads the current observation and remembers this step's scents."""
