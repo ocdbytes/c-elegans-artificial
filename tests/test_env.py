@@ -168,7 +168,7 @@ def test_episode_statistics_only_read_declared_fields():
 # -- config ----------------------------------------------------------------
 
 
-@pytest.mark.parametrize("name", ["world_v1.yaml", "world_v2.yaml"])
+@pytest.mark.parametrize("name", ["world_v1.yaml", "world_v2.yaml", "world_v3.yaml"])
 def test_shipped_yaml_documents_every_field(assert_yaml_covers_config, name):
     assert_yaml_covers_config(f"{CONFIG_DIR}/{name}", EnvConfig)
 
@@ -451,6 +451,42 @@ def test_eat_command_decides_and_costs_nothing():
 
     _, _, _, _, info = env.step(np.array([0.0, 0.0, 1.0], dtype=np.float32))
     assert info["food_eaten"] == 1
+
+
+def test_dopamine_follows_contact_not_ingestion():
+    env = WormWorldEnv(
+        config={
+            "food": {"count": 1, "min_spawn_distance": 0.0, "eating": "satiety"},
+            "randomization": {"enabled": False},
+            "observation": {"include_dopamine": True},
+        }
+    )
+    env.reset(seed=3)
+    env.metabolism.energy = env.config.metabolism.max_energy
+    env.food.positions[0] = env.worm.position.copy()
+
+    observation, _, _, _, info = env.step(np.zeros(2, dtype=np.float32))
+
+    assert info["food_eaten"] == 0, "a full worm leaves the pellet"
+    assert info["dopamine"] == 1.0, "but still senses it"
+    assert env.observation_labels[-1] == "dopamine"
+    assert observation[-1] == 1.0
+
+
+def test_dopamine_holds_on_the_eating_step_then_decays():
+    env = _fixed_env(count=1, min_spawn_distance=0.0, respawn_on_eat=False)
+    env.reset(seed=3)
+    env.metabolism.energy = 40.0
+    env.food.positions[0] = env.worm.position.copy()
+
+    _, _, _, _, info = env.step(np.zeros(2, dtype=np.float32))
+    assert info["food_eaten"] == 1
+    assert info["dopamine"] == 1.0, "contact is read before the pellet is gone"
+
+    for _ in range(10):
+        _, _, _, _, info = env.step(np.zeros(2, dtype=np.float32))
+    tau = env.config.observation.dopamine_decay_seconds
+    assert info["dopamine"] == pytest.approx(np.exp(-10 * env.config.world.dt / tau))
 
 
 def test_starvation_terminates_and_reward_counts_surviving_steps():

@@ -41,6 +41,9 @@ class StepInfo(TypedDict):
     food_smell: float
     toxin_smell: float
     nearest_food_distance: float
+    # Food-contact signal, logged whether or not the worm senses it. Time since
+    # the last contact is -dopamine_decay_seconds * ln(dopamine).
+    dopamine: float
 
     # Kinematics. `touch` is the share of commanded motion the boundary ate,
     # and is what the mechanosensory observation channel reports.

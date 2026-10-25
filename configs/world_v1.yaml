@@ -67,6 +67,8 @@ observation:
   include_toxin_delta: false
   include_touch: true
   include_head_phase: false
+  include_dopamine: false
+  dopamine_decay_seconds: 180.0  # off-food decay time constant, simulated seconds
 
 render:
   window_size: 700
