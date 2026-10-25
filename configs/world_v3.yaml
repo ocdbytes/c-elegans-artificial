@@ -1,0 +1,84 @@
+# World v3: world v2 plus the dopamine food-contact channel.
+# Its wider observation space is incompatible with v2 checkpoints.
+
+world:
+  width: 20.0
+  height: 20.0
+  dt: 0.1                 # simulated seconds per step
+  boundary: clamp         # clamp | wrap
+
+worm:
+  max_speed: 2.0          # world units per second
+  max_turn_rate: 3.0      # radians per second
+  allow_reverse: true
+  radius: 0.08            # rendering only
+  head_sweep_amplitude: 0.2
+  head_sweep_period: 0.8  # seconds
+
+randomization:
+  enabled: false
+  speed_scale: [0.75, 1.25]
+  turn_rate_scale: [0.75, 1.25]
+  food_count_scale: [0.5, 1.5]
+
+food:
+  count: 20
+  eat_radius: 1.0
+  scent_radius: 4.0
+  scent_peak: 1.0
+  scent_profile: gaussian # gaussian | linear | inverse_square
+  gaussian_sigma_scale: 0.35
+  respawn_on_eat: true
+  min_spawn_distance: 2.0
+  # 0 scatters pellets uniformly. N groups them into N patches, like bacterial
+  # lawns; a fully eaten patch reappears whole somewhere else.
+  patches: 3
+  patch_spread: 1.0       # std dev of a pellet's offset from its patch centre
+  # auto: always eat a touched pellet. satiety: eat only the touched pellets
+  # that fit whole under max_energy. action: a third action entry decides.
+  eating: satiety
+
+toxin:
+  count: 4
+  damage: 0.8
+  scent_radius: 3.0
+  scent_peak: 1.0
+  scent_profile: gaussian
+  gaussian_sigma_scale: 0.35
+  min_spawn_distance: 3.0
+
+metabolism:
+  max_energy: 100.0
+  initial_energy: 70.0
+  basal_cost: 0.20        # must dominate move cost to discourage freezing
+  move_cost: 0.02
+  food_value: 25.0
+  min_speed_factor: 0.35
+  speed_knee: 0.25
+
+reward:
+  survival: 1.0
+  death_penalty: 0.0
+
+observation:
+  include_energy: true
+  include_smell_level: true
+  include_smell_delta: true
+  include_toxin: true
+  include_toxin_delta: true
+  include_touch: true
+  include_head_phase: true
+  include_dopamine: true
+  dopamine_decay_seconds: 180.0  # off-food decay time constant, simulated seconds
+
+render:
+  window_size: 700
+  fps: 30
+  debug: false
+  show_scent_field: false
+  scent_contours: 3
+  contour_dot_spacing: 14.0
+  food_dot_scale: 0.12
+  worm_body_length: 2.5
+  worm_wave_amplitude: 0.35
+  worm_wavelength: 1.6

@@ -53,6 +53,8 @@ class Sensors:
             for the same reason as ``food_smell``.
         previous_toxin_smell: The same value one step ago, seeded like
             ``previous_food_smell``.
+        dopamine: Food-contact signal, 1 on food and decaying off it. Kept by
+            the environment because it carries state across steps.
     """
 
     worm: Worm
@@ -63,6 +65,7 @@ class Sensors:
     previous_food_smell: float = 0.0
     toxin_smell: float = 0.0
     previous_toxin_smell: float = 0.0
+    dopamine: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -169,6 +172,10 @@ def build_channels(config: EnvConfig) -> list[Channel]:
         channels.append(
             Channel("head_phase_cos", -1.0, 1.0, lambda s: s.worm.head_phase_sin_cos[1])
         )
+
+    if config.observation.include_dopamine:
+        # Last for the same reason as the head phase.
+        channels.append(Channel("dopamine", 0.0, 1.0, lambda s: s.dopamine))
 
     return channels
 

@@ -51,6 +51,9 @@ class WormWorldEnv(gym.Env):
         toxin: Hazards and the scent field they emit.
         metabolism: Energy state.
         steps: Steps taken this episode.
+        dopamine: Food-contact signal, 1 while touching a pellet and decaying
+            by ``observation.dopamine_decay_seconds`` off food. Sensed only
+            under ``observation.include_dopamine``.
         render_mode: One of ``metadata["render_modes"]``, or None.
     """
 
@@ -101,6 +104,10 @@ class WormWorldEnv(gym.Env):
         self.steps = 0
         self._previous_food_smell = 0.0
         self._previous_toxin_smell = 0.0
+        self.dopamine = 0.0
+        self._dopamine_decay = float(
+            np.exp(-self.config.world.dt / self.config.observation.dopamine_decay_seconds)
+        )
 
     @property
     def observation_labels(self) -> list[str]:
@@ -129,6 +136,7 @@ class WormWorldEnv(gym.Env):
         # than a jump from whatever the last episode ended on.
         self._previous_food_smell = float(self.food.scent_at(self.worm.head_position))
         self._previous_toxin_smell = float(self.toxin.scent_at(self.worm.head_position))
+        self.dopamine = 0.0
 
         observation = self._observe()
         if self.render_mode == "human":
@@ -157,10 +165,13 @@ class WormWorldEnv(gym.Env):
         # has enough left to complete it.
         self.metabolism.spend(locomotion)
         move = self.worm.step(locomotion, speed_factor=self.metabolism.speed_factor)
+        # Read once, before eating removes pellets.
+        reach = self.food.in_reach(self.worm.position)
         eaten = self.food.consume(
-            self.worm.position, self.np_random, limit=self._appetite(action)
+            reach[: self._appetite(action)], self.np_random, self.worm.position
         )
         self.metabolism.eat(eaten)
+        self.dopamine = 1.0 if len(reach) else self.dopamine * self._dopamine_decay
         # Dosed after moving, so the cost reflects where the action landed the
         # worm rather than where it set off from. Dosed at the body, not the
         # head: the sweep moves the sensor, not the tissue taking the harm.
@@ -225,7 +236,8 @@ class WormWorldEnv(gym.Env):
                 under ``food.eating: action``.
 
         Returns:
-            The most pellets ``food.eating`` allows now, or None for no limit.
+            The most pellets ``food.eating`` allows now, or None for no limit;
+            either slices the nearest-first pellets in reach.
         """
         eating = self.config.food.eating
         if eating == "satiety":
@@ -248,6 +260,7 @@ class WormWorldEnv(gym.Env):
                 previous_food_smell=self._previous_food_smell,
                 toxin_smell=toxin,
                 previous_toxin_smell=self._previous_toxin_smell,
+                dopamine=self.dopamine,
             )
         )
         self._previous_food_smell = smell
@@ -283,6 +296,7 @@ class WormWorldEnv(gym.Env):
             "food_smell": float(self.food.scent_at(self.worm.head_position)),
             "toxin_smell": float(self.toxin.scent_at(self.worm.head_position)),
             "nearest_food_distance": food_distance,
+            "dopamine": self.dopamine,
             "distance_moved": moved,
             "touch": self.worm.blocked,
             "position": self.worm.position.copy(),

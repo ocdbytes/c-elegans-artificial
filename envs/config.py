@@ -385,6 +385,15 @@ class ObservationConfig:
             smell as ``cos(phase) * sin(bearing)``, so reading it back needs to
             know which way the head was swinging. Requires
             ``worm.head_sweep_amplitude`` above 0.
+        include_dopamine: A food-contact signal, 1 while the worm touches a
+            pellet and decaying once it leaves. Contact rather than ingestion,
+            since the worm's dopamine neurons sense bacteria by touch, so a full
+            worm resting on food still gets it. The decay is the minutes-scale
+            "time since food" that area-restricted search needs and the frame
+            stack cannot hold.
+        dopamine_decay_seconds: Time constant of that decay, in simulated
+            seconds. The policy learns when to stop searching; this only sets
+            how finely the signal resolves time off food.
     """
 
     include_energy: bool = True
@@ -394,6 +403,8 @@ class ObservationConfig:
     include_toxin: bool = False
     include_toxin_delta: bool = False
     include_head_phase: bool = False
+    include_dopamine: bool = False
+    dopamine_decay_seconds: float = 180.0
 
     def __post_init__(self) -> None:
         if not (self.include_smell_level or self.include_smell_delta):
@@ -401,6 +412,8 @@ class ObservationConfig:
                 "the worm needs at least one food channel: enable "
                 "include_smell_level, include_smell_delta, or both"
             )
+        if self.dopamine_decay_seconds <= 0:
+            raise ValueError("dopamine_decay_seconds must be positive")
 
 
 @dataclass

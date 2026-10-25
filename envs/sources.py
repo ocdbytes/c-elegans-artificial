@@ -210,35 +210,44 @@ class FoodField(ScentField):
         )
         self.patch_of = np.repeat(np.arange(len(self.patch_sizes)), self.patch_sizes)
 
+    def in_reach(self, position: np.ndarray) -> np.ndarray:
+        """Finds the pellets within ``eat_radius`` of a position.
+
+        Args:
+            position: The worm's position.
+
+        Returns:
+            Indices of the pellets in reach, nearest first.
+        """
+        distances = geometry.distance(
+            position, self.positions, self.world.size, self.world.boundary
+        )
+        order = np.argsort(distances)
+        return order[distances[order] <= self.config.eat_radius]
+
     def consume(
-        self, position: np.ndarray, rng: np.random.Generator, limit: int | None = None
+        self, pellets: np.ndarray, rng: np.random.Generator, position: np.ndarray
     ) -> int:
-        """Eats pellets within ``eat_radius`` of a position, nearest first.
+        """Eats the given pellets.
 
         Eaten pellets either respawn elsewhere or are removed permanently,
         depending on ``respawn_on_eat``. Under ``patches`` they are removed, and
         a patch whose last pellet went is redrawn whole at a new spot.
 
         Args:
-            position: The worm's position.
+            pellets: Indices of the pellets to eat, taken from :meth:`in_reach`
+                on the current pellets.
             rng: Source of randomness, used when respawning.
-            limit: Most pellets to eat this step, or None for every one in
-                reach. Touched pellets beyond it stay where they are.
+            position: The worm's position, kept clear when respawning.
 
         Returns:
             How many pellets were eaten this step, usually 0 or 1.
         """
-        distances = geometry.distance(
-            position, self.positions, self.world.size, self.world.boundary
-        )
-        eaten = distances <= self.config.eat_radius
-        if limit is not None:
-            # Pellets in reach are the nearest ones, so dropping everything past
-            # the first `limit` by distance keeps the nearest in-reach pellets.
-            eaten[np.argsort(distances)[limit:]] = False
-        count = int(eaten.sum())
+        count = len(pellets)
         if count == 0:
             return 0
+        eaten = np.zeros(self.count, dtype=bool)
+        eaten[pellets] = True
 
         self.eaten_total += count
         if self.config.respawn_on_eat and not self.config.patches:
